@@ -54,20 +54,12 @@ jobs:
             exit 1
           fi
 
-      - name: Diagnose OIDC preconditions
-        run: |
-          echo "node: $(node --version)"
-          echo "npm:  $(npm --version)"
-          echo "which npm: $(which npm)"
-          echo "id-token request URL present: ${ACTIONS_ID_TOKEN_REQUEST_URL:+yes}"
-          echo "--- effective npmrc ---"
-          npm config get userconfig
-          cat "$(npm config get userconfig)" 2>/dev/null || echo "(none)"
-
+      # On failure, surface npm's OIDC exchange trace (the real reason hides
+      # behind a misleading ENEEDAUTH/404 — npm/cli#9088).
       - name: Publish
         run: |
           npm publish --loglevel verbose || {
             echo "=== npm debug log (OIDC exchange trace) ==="
-            tail -n 100 /home/runner/.npm/_logs/*-debug-0.log
+            tail -n 60 /home/runner/.npm/_logs/*-debug-0.log
             exit 1
           }
