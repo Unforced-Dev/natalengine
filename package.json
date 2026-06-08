@@ -33,11 +33,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Unforced-Dev/natal-engine.git"
+    "url": "git+https://github.com/Unforced-Dev/natalengine.git"
   },
   "homepage": "https://natalengine.com",
   "bugs": {
-    "url": "https://github.com/Unforced-Dev/natal-engine/issues"
+    "url": "https://github.com/Unforced-Dev/natalengine/issues"
   },
   "keywords": [
     "astrology",
