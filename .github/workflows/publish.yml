@@ -65,4 +65,9 @@ jobs:
           cat "$(npm config get userconfig)" 2>/dev/null || echo "(none)"
 
       - name: Publish
-        run: npm publish
+        run: |
+          npm publish --loglevel verbose || {
+            echo "=== npm debug log (OIDC exchange trace) ==="
+            tail -n 100 /home/runner/.npm/_logs/*-debug-0.log
+            exit 1
+          }
