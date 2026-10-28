@@ -40,7 +40,7 @@ wrong, what changed and how it was checked.
 | Node arrow ≠ Swiss | 53.0% | 1.9% |
 | Charts with any Determination/Environment/Perspective arrow ≠ Swiss | 79.2% | 4.0% |
 | Same chart under host TZ UTC / New York / Kolkata / Chatham | 8/144 rows differed (audit) | identical |
-| Chart time (median of 5 × 500 charts) | 1.34 ms | **0.31 ms** |
+| Chart time (median of 5 × 500 charts; three paired runs) | 1.34–1.72 ms | **0.31–0.36 ms** |
 
 - **References.** Jovian Archive "ZEN" composite PDFs for Obama, Biden, Cruise and Winfrey (gate.line only, no
   text). Swiss Ephemeris 2.10.03 (pyswisseph with SE1 files, in a throwaway venv, not a dependency) produced

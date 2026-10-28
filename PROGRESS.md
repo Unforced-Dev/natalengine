@@ -8,8 +8,11 @@
 5. OHD check in /home/uni/Code/wt/ohd-ne161 (throwaway): npm test 37/37; accuracy-check 104/104.
 6. ACCURACY.md.
 
+7. Code review (medium): fixes in de8a7cd (host-TZ child-process test, arc guard, provenance notes).
+8. Video: ~/.local/share/uni/videos/natalengine-accuracy.mp4 (63 s; script /tmp/ne-scripts/make_video.py).
+
 ## Next
-- Code review; video at ~/.local/share/uni/videos/natalengine-accuracy.mp4.
+- Aaron: review branch, npm publish 1.6.1, bump natalengine in Open HD.
 
 ## Open questions
 - About 4% of charts still have an arrow that differs from Swiss (node within 17″ of a tone edge). A fuller Moon theory would be needed.
