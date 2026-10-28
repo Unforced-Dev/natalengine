@@ -1,5 +1,41 @@
 # Changelog
 
+## 1.6.1 — 2026-10-28
+
+Accuracy release. Checked against four official Jovian Archive charts (104
+activations) and 1,000 Swiss Ephemeris reference births; see `ACCURACY.md`.
+
+### Fixed
+
+- **Design instant**: solved for exactly 88° of solar arc (residual under
+  0.001″) in UT milliseconds. The old search stopped at 0.001°, a fallback
+  could overwrite the converged hour, and it used host-local dates; it was up
+  to 0.26° (about 6 hours) off and changed with the host time zone. Design
+  lines (mostly the Moon, sometimes the Sun line and so the profile) were
+  wrong in about 8% of charts.
+- **True node**: now the osculating node of the Moon's orbit, the Swiss
+  Ephemeris definition (within 17″ of Swiss, 1900–2050). The old 5-term
+  Meeus correction was up to 17′ off (one tone is 1.56′), so Variable arrows
+  and some node lines were wrong.
+- **Seconds dropped**: `calculateBirthPositions` truncated fractional minutes,
+  up to 59 s (half an arcminute of Moon).
+- `positions.design.dateTime` could show the wrong day when rounding 23:59.7
+  up to midnight.
+
+### Added
+
+- `positions.personality.utc` / `positions.design.utc` (ISO instants).
+- `calculatePositionsAtUtc`, `findSolarArcInstant`, `localToUtcMs`,
+  `trueNodeLongitude`, `meanNodeLongitude`, `sunLongitudeAtUtc` exports in
+  `natalengine/astronomy`.
+- Reference regression tests: `tests/reference-charts.test.js` (Jovian, 104/104)
+  and `tests/accuracy-properties.test.js` (Swiss Ephemeris, 1,000 births).
+
+### Performance
+
+- About 4× faster per Human Design chart (1.34 → 0.31 ms), because the solver
+  only computes the Sun while it searches.
+
 ## 1.2.0 — 2026-06-04
 
 Accuracy release. The Human Design calculator was audited against five

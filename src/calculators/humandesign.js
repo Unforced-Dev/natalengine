@@ -10,7 +10,8 @@
  *
  * Calculates: Type, Strategy, Authority, Profile, Centers, Gates, Channels
  *
- * Uses Meeus Astronomical Algorithms for Sun/Moon/Earth positions.
+ * Positions from astronomy-engine (see astronomy.js); true (osculating) node;
+ * Design instant solved for exactly 88° of solar arc.
  */
 
 import { calculatePositionsAtUtc, localToUtcMs, findSolarArcInstant } from './astronomy.js';
@@ -548,7 +549,7 @@ export function calculateHumanDesign(birthDate, birthHour = 12, timezone = 0, op
     .filter(([, v]) => v.channels > 0)
     .sort((a, b) => b[1].channels - a[1].channels)[0];
 
-  // Calculate Variable (Four Arrows) from Color
+  // Calculate Variable (Four Arrows): type from Color, direction from Tone
   const variable = calculateVariable(personalityPos, designPos);
 
   return {
@@ -683,7 +684,8 @@ function determineDefinitionType(channels, definedCenters) {
 }
 
 // Variable / Four Arrows calculation
-// Each arrow is determined by the Color (1-6) of specific planetary positions
+// Each arrow's type is the Color (1-6) and its direction the Tone (1-3 left, 4-6 right)
+// of specific planetary positions
 // Color is the sub-line level: each Line spans 0.9375°, each Color spans 0.15625° (0.9375/6)
 const DETERMINATION_TYPES = {
   1: { name: 'Appetite', description: 'Eat simple, one thing at a time. Consecutive diet.' },
