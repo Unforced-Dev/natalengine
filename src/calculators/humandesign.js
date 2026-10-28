@@ -10,10 +10,11 @@
  *
  * Calculates: Type, Strategy, Authority, Profile, Centers, Gates, Channels
  *
- * Uses Meeus Astronomical Algorithms for Sun/Moon/Earth positions.
+ * Positions from astronomy-engine (see astronomy.js); true (osculating) node;
+ * Design instant solved for exactly 88° of solar arc.
  */
 
-import { calculateBirthPositions } from './astronomy.js';
+import { calculatePositionsAtUtc, localToUtcMs, findSolarArcInstant } from './astronomy.js';
 import { parseDateComponents } from './utils.js';
 import { getIncarnationCross } from '../data/incarnation-crosses.js';
 
@@ -403,124 +404,17 @@ function planetToGateActivation(planet, longitude) {
 export function calculateHumanDesign(birthDate, birthHour = 12, timezone = 0, options = {}) {
   const { year, month, day } = parseDateComponents(birthDate);
 
-  // Calculate personality positions (birth moment)
-  const personalityPos = calculateBirthPositions(year, month, day, birthHour, timezone, null, null, options);
+  // Personality: the birth instant. Design: the instant the Sun stood exactly
+  // 88° of ecliptic longitude earlier (about 86–92 days, varying with Earth's
+  // orbital speed). Both are solved in UT milliseconds, so the host time zone
+  // never enters the calculation.
+  const birthUtMs = localToUtcMs(year, month, day, birthHour, timezone);
+  const designUtMs = findSolarArcInstant(birthUtMs, 88);
+  const personalityPos = calculatePositionsAtUtc(birthUtMs, null, null, options);
+  const designPos = calculatePositionsAtUtc(designUtMs, null, null, options);
 
-  // Calculate design positions (88 degrees of Sun before birth)
-  // The Sun doesn't move exactly 1° per day - it varies from ~0.9856°/day on average
-  // (faster in winter ~1.02°/day, slower in summer ~0.95°/day due to Earth's elliptical orbit)
-  // We need to find the EXACT MOMENT (date + time) when Sun was 88° before birth
-
-  const personalitySunLong = personalityPos.sun.longitude;
-  const designSunTarget = (personalitySunLong - 88 + 360) % 360;
-
-  // Start with rough estimate: ~88-90 days before birth, same hour
-  let designDate = new Date(year, month - 1, day - 89);
-  let designYear = designDate.getFullYear();
-  let designMonth = designDate.getMonth() + 1;
-  let designDay = designDate.getDate();
-  let designHour = birthHour; // Will be refined to find exact moment
-
-  // Phase 1: Find the approximate day (within 1 day accuracy)
-  let designPos = null;
-  for (let iteration = 0; iteration < 20; iteration++) {
-    designPos = calculateBirthPositions(designYear, designMonth, designDay, 12, timezone, null, null, options);
-    const currentSunLong = designPos.sun.longitude;
-
-    let diff = currentSunLong - designSunTarget;
-    if (diff > 180) diff -= 360;
-    if (diff < -180) diff += 360;
-
-    // Within ~1 day (Sun moves ~1° per day)
-    if (Math.abs(diff) < 1.0) {
-      break;
-    }
-
-    // Adjust date based on how far off we are
-    const daysToAdjust = -Math.round(diff / 0.9856);
-    if (daysToAdjust === 0) {
-      if (diff > 0) designDay -= 1;
-      else designDay += 1;
-    } else {
-      designDay += daysToAdjust;
-    }
-
-    // Normalize the date
-    designDate = new Date(designYear, designMonth - 1, designDay);
-    designYear = designDate.getFullYear();
-    designMonth = designDate.getMonth() + 1;
-    designDay = designDate.getDate();
-  }
-
-  // Phase 2: Find the exact hour and minute using binary search
-  // Search across a 48-hour window centered on our best day estimate
-  // IMPORTANT: Keep base date fixed, only adjust via offsets
-  const baseYear = designYear;
-  const baseMonth = designMonth;
-  const baseDay = designDay;
-
-  let lowDayOffset = -1.0; // 1 day before our estimate
-  let highDayOffset = 1.0; // 1 day after our estimate
-  let bestOffset = 0;
-
-  for (let iteration = 0; iteration < 30; iteration++) {
-    const midDayOffset = (lowDayOffset + highDayOffset) / 2;
-
-    // Calculate date/time from day offset relative to FIXED base date
-    // Convert offset to hours from noon on base date
-    const totalHoursFromBaseNoon = midDayOffset * 24;
-
-    // Calculate actual date/time
-    let searchDate = new Date(baseYear, baseMonth - 1, baseDay, 12);
-    searchDate.setTime(searchDate.getTime() + totalHoursFromBaseNoon * 60 * 60 * 1000);
-
-    const searchYear = searchDate.getFullYear();
-    const searchMonth = searchDate.getMonth() + 1;
-    const searchDay = searchDate.getDate();
-    const searchHour = searchDate.getHours() + searchDate.getMinutes() / 60;
-
-    designPos = calculateBirthPositions(searchYear, searchMonth, searchDay, searchHour, timezone, null, null, options);
-    const currentSunLong = designPos.sun.longitude;
-
-    let diff = currentSunLong - designSunTarget;
-    if (diff > 180) diff -= 360;
-    if (diff < -180) diff += 360;
-
-    // Within 0.001° accuracy (about 1.4 minutes of time)
-    if (Math.abs(diff) < 0.001) {
-      designYear = searchYear;
-      designMonth = searchMonth;
-      designDay = searchDay;
-      designHour = searchHour;
-      break;
-    }
-
-    // Binary search: adjust search range
-    // If diff > 0, Sun is ahead of target, need to go back in time (lower offset)
-    // If diff < 0, Sun is behind target, need to go forward in time (higher offset)
-    if (diff > 0) {
-      highDayOffset = midDayOffset;
-    } else {
-      lowDayOffset = midDayOffset;
-    }
-
-    // Track best offset for final result if we don't converge
-    bestOffset = midDayOffset;
-  }
-
-  // If loop completed without break, use best offset to set final values
-  if (designYear === baseYear && designMonth === baseMonth && designDay === baseDay) {
-    const totalHoursFromBaseNoon = bestOffset * 24;
-    let finalDate = new Date(baseYear, baseMonth - 1, baseDay, 12);
-    finalDate.setTime(finalDate.getTime() + totalHoursFromBaseNoon * 60 * 60 * 1000);
-    designYear = finalDate.getFullYear();
-    designMonth = finalDate.getMonth() + 1;
-    designDay = finalDate.getDate();
-    designHour = finalDate.getHours() + finalDate.getMinutes() / 60;
-  }
-
-  // Final calculation at the exact Design moment
-  designPos = calculateBirthPositions(designYear, designMonth, designDay, designHour, timezone, null, null, options);
+  // Design moment as local wall time at the birth offset, to the minute.
+  const designLocal = new Date(Math.round((designUtMs + timezone * 3600000) / 60000) * 60000).toISOString();
 
   // Build gate activations for all planets
   const personalityGates = {
@@ -655,7 +549,7 @@ export function calculateHumanDesign(birthDate, birthHour = 12, timezone = 0, op
     .filter(([, v]) => v.channels > 0)
     .sort((a, b) => b[1].channels - a[1].channels)[0];
 
-  // Calculate Variable (Four Arrows) from Color
+  // Calculate Variable (Four Arrows): type from Color, direction from Tone
   const variable = calculateVariable(personalityPos, designPos);
 
   return {
@@ -704,6 +598,7 @@ export function calculateHumanDesign(birthDate, birthHour = 12, timezone = 0, op
     positions: {
       personality: {
         date: birthDate,
+        utc: new Date(birthUtMs).toISOString(),
         sun: personalityPos.sun,
         earth: personalityPos.earth,
         moon: personalityPos.moon,
@@ -719,16 +614,10 @@ export function calculateHumanDesign(birthDate, birthHour = 12, timezone = 0, op
         pluto: personalityPos.pluto
       },
       design: {
-        date: `${designYear}-${String(designMonth).padStart(2, '0')}-${String(designDay).padStart(2, '0')}`,
-        // Local time (birth timezone) of the exact 88°-solar-arc moment.
-        // Round to whole minutes first so 59.7' carries into the hour
-        // instead of printing ":60".
-        dateTime: (() => {
-          const totalMinutes = Math.round(designHour * 60);
-          const hh = Math.floor(totalMinutes / 60) % 24;
-          const mm = totalMinutes % 60;
-          return `${designYear}-${String(designMonth).padStart(2, '0')}-${String(designDay).padStart(2, '0')}T${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-        })(),
+        date: designLocal.slice(0, 10),
+        // Local time (birth timezone) of the exact 88°-solar-arc moment
+        dateTime: designLocal.slice(0, 16),
+        utc: new Date(designUtMs).toISOString(),
         sun: designPos.sun,
         earth: designPos.earth,
         moon: designPos.moon,
@@ -795,7 +684,8 @@ function determineDefinitionType(channels, definedCenters) {
 }
 
 // Variable / Four Arrows calculation
-// Each arrow is determined by the Color (1-6) of specific planetary positions
+// Each arrow's type is the Color (1-6) and its direction the Tone (1-3 left, 4-6 right)
+// of specific planetary positions
 // Color is the sub-line level: each Line spans 0.9375°, each Color spans 0.15625° (0.9375/6)
 const DETERMINATION_TYPES = {
   1: { name: 'Appetite', description: 'Eat simple, one thing at a time. Consecutive diet.' },
