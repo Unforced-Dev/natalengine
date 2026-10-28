@@ -19,7 +19,7 @@ const ORDER = ['sun', 'earth', 'moon', 'northNode', 'southNode', 'mercury', 'ven
 const ref = (s) => Object.fromEntries(s.trim().split(/\s+/).map((v, i) => [ORDER[i], v]));
 
 // timezone = UTC offset at birth (IANA history, as Jovian printed it in GMT).
-export const REFERENCE_CHARTS = [
+const REFERENCE_CHARTS = [
   {
     name: 'Barack Obama', date: '1961-08-04', hour: 19 + 24 / 60, timezone: -10,
     P: ref('33.6 19.6 20.4 29.3 30.3 31.1 15.4 47.6 60.5 61.5 29.1 44.2 40.2'),
@@ -49,20 +49,14 @@ export const REFERENCE_CHARTS = [
 const fmt = (a) => (a ? `${a.gate}.${a.line}` : '—');
 
 describe('Jovian Archive reference charts (104 activations)', () => {
-  const misses = [];
-  let total = 0;
-
   for (const c of REFERENCE_CHARTS) {
     describe(c.name, () => {
       const chart = calculateHumanDesign(c.date, c.hour, c.timezone);
 
       for (const [side, R] of [['personality', c.P], ['design', c.D]]) {
         for (const body of ORDER) {
-          total++;
           test(`${side} ${body} = ${R[body]}`, () => {
-            const got = fmt(chart.gates[side][body]);
-            if (got !== R[body]) misses.push(`${c.name} ${side} ${body}: ${got} ≠ ${R[body]}`);
-            assert.strictEqual(got, R[body]);
+            assert.strictEqual(fmt(chart.gates[side][body]), R[body]);
           });
         }
       }
@@ -73,9 +67,4 @@ describe('Jovian Archive reference charts (104 activations)', () => {
       });
     });
   }
-
-  test('all 104 activations match', () => {
-    assert.strictEqual(total, 104);
-    assert.deepStrictEqual(misses, []);
-  });
 });

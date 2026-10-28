@@ -9,6 +9,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert';
 import { readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { calculateHumanDesign } from '../src/calculators/humandesign.js';
 
 const REF = JSON.parse(readFileSync(new URL('./data/swiss-reference.json', import.meta.url), 'utf8'));
@@ -68,7 +69,7 @@ describe(`Swiss Ephemeris property checks (${REF.births.length} births)`, () => 
     assert.deepStrictEqual(bad.slice(0, 5), [], `${bad.length} nodes ≥ ¼ tone off (worst ${fmtArc(worst)})`);
   });
 
-  test('Chart does not depend on how the birth instant is expressed (offset or host zone)', () => {
+  test('Chart does not depend on which UTC offset expresses the birth instant', () => {
     const offsets = [-10, -4, 5.5, 9.75, 14];
     const bad = [];
     REF.births.slice(0, 100).forEach((b, i) => {
@@ -84,5 +85,16 @@ describe(`Swiss Ephemeris property checks (${REF.births.length} births)`, () => 
       if (Math.abs(designUtMs(c, tz) - designUtMs(ref, 0)) > 60000) bad.push(`${new Date(b.utMs).toISOString()} tz ${tz} design dateTime`);
     });
     assert.deepStrictEqual(bad.slice(0, 5), [], `${bad.length} differences`);
+  });
+
+  test('Chart does not depend on the host time zone', () => {
+    const inputs = REF.births.slice(0, 50).map((b, i) => localInput(b.utMs, [-5, 5.5, 12.75][i % 3]));
+    const run = (tz) => JSON.parse(execFileSync(process.execPath, ['--input-type=module', '-e', `
+      const { calculateHumanDesign } = await import(${JSON.stringify(new URL('../src/calculators/humandesign.js', import.meta.url).href)});
+      const out = ${JSON.stringify(inputs)}.map((i) => { const c = calculateHumanDesign(...i);
+        return [c.positions.design.dateTime, c.positions.design.sun.longitude, c.positions.design.moon.longitude, c.positions.personality.northNode.longitude]; });
+      console.log(JSON.stringify(out));`], { env: { ...process.env, TZ: tz }, encoding: 'utf8' }));
+    const base = run('UTC');
+    for (const tz of ['America/New_York', 'Asia/Kolkata', 'Pacific/Chatham']) assert.deepStrictEqual(run(tz), base, tz);
   });
 });

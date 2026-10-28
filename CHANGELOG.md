@@ -16,7 +16,9 @@ activations) and 1,000 Swiss Ephemeris reference births; see `ACCURACY.md`.
 - **True node**: now the osculating node of the Moon's orbit, the Swiss
   Ephemeris definition (within 17″ of Swiss, 1900–2050). The old 5-term
   Meeus correction was up to 17′ off (one tone is 1.56′), so Variable arrows
-  and some node lines were wrong.
+  and some node lines were wrong. Every calculator that reports the node
+  (Western, Vedic Rahu/Ketu, HD transits, astro cartography, MCP) gets the
+  new value; all already defaulted to the true node.
 - **Seconds dropped**: `calculateBirthPositions` truncated fractional minutes,
   up to 59 s (half an arcminute of Moon).
 - `positions.design.dateTime` could show the wrong day when rounding 23:59.7

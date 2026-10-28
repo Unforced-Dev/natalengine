@@ -240,8 +240,10 @@ const DAY_MS = 86400000;
  * root lies in [arc/1.03, arc/0.94] days earlier. Newton steps (slope from the
  * previous secant) are kept inside that shrinking bracket, falling back to
  * bisection. Converges to 1e-7° (about 0.0004″, 10 ms) in 3–4 Sun evaluations.
+ * The bracket only holds for arcs from 1° to 120°.
  */
 export function findSolarArcInstant(utMs, arc = 88) {
+  if (!(arc >= 1 && arc <= 120)) throw new RangeError(`solar arc must be 1°–120°, got ${arc}`);
   const target = normalizeAngle(sunLongitudeAtUtc(utMs) - arc);
   const offset = (ms) => {
     const d = normalizeAngle(sunLongitudeAtUtc(ms) - target);
@@ -273,8 +275,8 @@ export function findSolarArcInstant(utMs, arc = 88) {
  * The node of the instantaneous orbit plane: the normal h = r × v of the
  * Moon's geocentric state vector, in the true ecliptic and equinox of date,
  * points 90° behind the ascending node. This is the same definition Swiss
- * Ephemeris uses for SE_TRUE_NODE; against it the error is under 20″
- * (1900–2050), versus up to 17′ for the old 5-term Meeus correction.
+ * Ephemeris uses for SE_TRUE_NODE; against it the worst error is 17″ over
+ * 2,000 instants 1900–2050, versus 17′ for the old 5-term Meeus correction.
  */
 export function trueNodeLongitude(time) {
   const t = Astronomy.MakeTime(time);

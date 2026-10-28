@@ -1,7 +1,8 @@
 /**
  * Western Astrology Calculator
  *
- * Uses Meeus Astronomical Algorithms for accurate Sun/Moon positions.
+ * Positions from astronomy-engine (VSOP87; true osculating node); Ascendant and
+ * Midheaven from sidereal time (Meeus).
  * Calculates: Sun Sign, Moon Sign, Rising Sign (approximate)
  */
 
@@ -419,12 +420,12 @@ function calculateBalance(sunSign, moonSign, risingSign) {
 
 /**
  * Calculate complete Western astrology profile
- * Uses Meeus algorithms for accurate planetary positions
+ * Planetary positions from astronomy-engine (see astronomy.js)
  */
 export function calculateAstrology(birthDate, birthHour = 12, timezone = 0, latitude = null, longitude = null) {
   const { year, month, day } = parseDateComponents(birthDate);
 
-  // Calculate accurate planetary positions using Meeus algorithms
+  // Planetary positions from astronomy-engine
   const positions = calculateBirthPositions(year, month, day, birthHour, timezone, latitude, longitude);
 
   // Helper to get zodiac info for a planet
@@ -439,7 +440,7 @@ export function calculateAstrology(birthDate, birthHour = 12, timezone = 0, lati
     sign: moonZodiac,
     degree: positions.moon.degree,
     longitude: positions.moon.longitude,
-    note: 'Calculated using Meeus algorithms',
+    note: 'Calculated with astronomy-engine (VSOP87)',
     warning: false
   };
 
@@ -571,7 +572,7 @@ export function calculateAstrology(birthDate, birthHour = 12, timezone = 0, lati
     useEphemeris: true, // We're using accurate calculations now
     julianDay: positions.julianDay,
     hasLocation: latitude !== null && longitude !== null,
-    note: 'Calculated using Meeus Astronomical Algorithms'
+    note: 'Calculated with astronomy-engine (VSOP87); angles from sidereal time (Meeus)'
   };
 }
 
