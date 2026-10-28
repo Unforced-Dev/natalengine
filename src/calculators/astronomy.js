@@ -216,12 +216,55 @@ export function formatDegree(longitude) {
  *   node is exposed for QA against charts produced with that setting.
  */
 export function calculateBirthPositions(year, month, day, hour = 12, timezone = 0, latitude = null, longitude = null, options = {}) {
-  // Local wall time → UT instant. Date.UTC normalizes day/month overflow; the
-  // hour is added in milliseconds so seconds are kept.
+  return calculatePositionsAtUtc(localToUtcMs(year, month, day, hour, timezone), latitude, longitude, options);
+}
+
+/**
+ * Local wall time at a fixed UTC offset → UT instant in milliseconds.
+ * Day/month overflow is normalized; the hour is added in milliseconds so
+ * seconds are kept. Independent of the host time zone.
+ */
+export function localToUtcMs(year, month, day, hour = 0, timezone = 0) {
   const midnight = new Date(0);
   midnight.setUTCFullYear(year, month - 1, day);
-  const utMs = midnight.getTime() + (hour - timezone) * 3600000;
-  return calculatePositionsAtUtc(utMs, latitude, longitude, options);
+  return midnight.getTime() + (hour - timezone) * 3600000;
+}
+
+const DAY_MS = 86400000;
+
+/**
+ * The UT instant before `utMs` at which the Sun stood exactly `arc` degrees
+ * of apparent ecliptic longitude earlier (Human Design: 88°).
+ *
+ * The Sun's apparent motion is 0.95–1.02°/day, so for arcs up to ~90° the
+ * root lies in [arc/1.03, arc/0.94] days earlier. Newton steps (slope from the
+ * previous secant) are kept inside that shrinking bracket, falling back to
+ * bisection. Converges to 1e-7° (about 0.0004″, 10 ms) in 3–4 Sun evaluations.
+ */
+export function findSolarArcInstant(utMs, arc = 88) {
+  const target = normalizeAngle(sunLongitudeAtUtc(utMs) - arc);
+  const offset = (ms) => {
+    const d = normalizeAngle(sunLongitudeAtUtc(ms) - target);
+    return d > 180 ? d - 360 : d; // > 0: Sun already past target, root is earlier
+  };
+
+  let lo = utMs - (arc / 0.94) * DAY_MS;
+  let hi = utMs - (arc / 1.03) * DAY_MS;
+  let rate = 0.9856 / DAY_MS; // degrees per ms, refined by secant
+  let t = utMs - (arc / 0.9856) * DAY_MS;
+  let ft = offset(t);
+
+  for (let i = 0; i < 60 && Math.abs(ft) > 1e-7 && hi - lo > 1; i++) {
+    if (ft > 0) hi = t; else lo = t;
+    let next = t - ft / rate;
+    if (!(next > lo && next < hi)) next = (lo + hi) / 2;
+    const fNext = offset(next);
+    const slope = (fNext - ft) / (next - t);
+    if (slope > 0) rate = slope;
+    t = next;
+    ft = fNext;
+  }
+  return t;
 }
 
 /**
@@ -411,6 +454,8 @@ export default {
   calculateMidheaven,
   calculateBirthPositions,
   calculatePositionsAtUtc,
+  localToUtcMs,
+  findSolarArcInstant,
   sunLongitudeAtUtc,
   trueNodeLongitude,
   meanNodeLongitude,
